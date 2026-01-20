@@ -8,7 +8,7 @@
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 input, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
-#editor { border:1px solid #aaa; min-height:120px; padding:10px; }
+#editor { border:1px solid #aaa; min-height:140px; padding:10px; }
 #output { margin-top:20px; padding:12px; border:1px solid #444; }
 #info { margin-top:10px; word-break:break-all; font-size:14px; }
 </style>
@@ -19,7 +19,7 @@ input, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
 <h2>Enter Key</h2>
 <input id="keyInput" placeholder="e.g. formula1">
 
-<h2>Enter Text (formatting supported)</h2>
+<h2>Enter Text (bold, new lines, formatting supported)</h2>
 <div id="editor" contenteditable="true"></div>
 
 <button onclick="copyAll()">Copy Share Link</button>
@@ -41,37 +41,43 @@ function copyAll() {
   const longUrl = location.origin + location.pathname + "#" + data;
 
   output.innerHTML = html;
-  info.textContent = "Generating short link...";
+  info.textContent = "Processing...";
 
+  // If URL too long, skip shortener
+  if (longUrl.length > 1800) {
+    navigator.clipboard.writeText(longUrl);
+    info.textContent = "Text is large. Short link not possible.\nCopied long link:\n" + longUrl;
+    alert("Long link copied (text too large for shortener)");
+    return;
+  }
+
+  // Try TinyURL shortener
   fetch("https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl))
     .then(r => r.text())
     .then(t => {
       t = t.trim();
-      if (!t.startsWith("http")) {
-        alert("Shortener failed. Long link copied instead.");
-        navigator.clipboard.writeText(longUrl);
-        info.textContent = "Copied long link:\n" + longUrl;
-        return;
-      }
+      if (!t.startsWith("http")) throw "fail";
       navigator.clipboard.writeText(t);
       info.textContent = "Short link copied:\n" + t;
       alert("Short link copied");
     })
     .catch(() => {
       navigator.clipboard.writeText(longUrl);
-      info.textContent = "Copied long link:\n" + longUrl;
-      alert("Shortener error. Long link copied.");
+      info.textContent = "Shortener failed.\nCopied long link:\n" + longUrl;
+      alert("Shortener failed. Long link copied.");
     });
 }
 
 function loadFromHash() {
   if (!location.hash) return;
-  const d = decodeURIComponent(location.hash.slice(1));
-  const p = d.split("||");
-  if (p.length !== 2) return;
-  keyInput.value = p[0];
-  editor.innerHTML = p[1];
-  output.innerHTML = p[1];
+
+  const decoded = decodeURIComponent(location.hash.slice(1));
+  const parts = decoded.split("||");
+  if (parts.length !== 2) return;
+
+  keyInput.value = parts[0];
+  editor.innerHTML = parts[1];
+  output.innerHTML = parts[1];
 }
 
 window.addEventListener("hashchange", loadFromHash);
