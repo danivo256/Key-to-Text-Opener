@@ -2,48 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Text in URL (Formatted)</title>
+<title>Key to Text</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 input, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
-#editor {
-  border: 1px solid #aaa;
-  min-height: 120px;
-  padding: 10px;
-  margin-top: 8px;
-}
-#output {
-  margin-top: 20px;
-  padding: 12px;
-  border: 1px solid #444;
-}
-#linkBox, #shortBox { margin-top: 10px; word-break: break-all; font-size: 14px; }
+#editor { border:1px solid #aaa; min-height:120px; padding:10px; }
+#output { margin-top:20px; padding:12px; border:1px solid #444; }
+#linkBox, #shortBox { margin-top:10px; word-break:break-all; font-size:14px; }
 </style>
 </head>
 
 <body>
 
 <h2>Enter Key</h2>
-<input id="keyInput" placeholder="e.g. A, 1, formula">
+<input id="keyInput" placeholder="e.g. formula1">
 
-<h2>Enter Text (supports bold, new lines, formatting)</h2>
+<h2>Enter Text (bold, new lines supported)</h2>
 <div id="editor" contenteditable="true"></div>
 
-<button onclick="generateLink()">Generate Link</button>
-<button onclick="copyShort()">Copy Short Link</button>
+<button onclick="copyAll()">Copy Share Link</button>
 
 <div id="linkBox"></div>
 <div id="shortBox"></div>
 <div id="output"></div>
 
 <script>
-let lastShortLink = "";
+let lastShort = "";
 
-function generateLink() {
-  const key = document.getElementById("keyInput").value.trim();
-  const html = document.getElementById("editor").innerHTML.trim();
+function copyAll() {
+  const key = keyInput.value.trim();
+  const html = editor.innerHTML.trim();
 
   if (!key || !html) {
     alert("Enter key and text");
@@ -53,47 +43,33 @@ function generateLink() {
   const data = encodeURIComponent(key + "||" + html);
   const longUrl = location.origin + location.pathname + "#" + data;
 
-  document.getElementById("linkBox").textContent = "Long link: " + longUrl;
-  showOutput(html);
+  linkBox.textContent = "Long link: " + longUrl;
+  output.innerHTML = html;
 
-  // tiny.one shortener
-  fetch("https://tiny.one/api-create.php?url=" + encodeURIComponent(longUrl))
+  // WORKING shortener API
+  fetch("https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl))
     .then(r => r.text())
     .then(shortUrl => {
-      lastShortLink = shortUrl;
-      document.getElementById("shortBox").textContent = "Short link: " + shortUrl;
+      lastShort = shortUrl.trim();
+      shortBox.textContent = "Short link: " + lastShort;
+      navigator.clipboard.writeText(lastShort);
+      alert("Short link copied");
     })
     .catch(() => {
-      document.getElementById("shortBox").textContent = "Short link failed.";
+      alert("Short link failed");
     });
-}
-
-function copyShort() {
-  if (!lastShortLink) {
-    alert("Generate link first");
-    return;
-  }
-  navigator.clipboard.writeText(lastShortLink);
-  alert("Short link copied");
-}
-
-function showOutput(html) {
-  document.getElementById("output").innerHTML = html;
 }
 
 function loadFromHash() {
   if (!location.hash) return;
 
   const decoded = decodeURIComponent(location.hash.slice(1));
-  const parts = decoded.split("||");
-  if (parts.length !== 2) return;
+  const p = decoded.split("||");
+  if (p.length !== 2) return;
 
-  const key = parts[0];
-  const html = parts[1];
-
-  document.getElementById("keyInput").value = key;
-  document.getElementById("editor").innerHTML = html;
-  showOutput(html);
+  keyInput.value = p[0];
+  editor.innerHTML = p[1];
+  output.innerHTML = p[1];
 }
 
 window.addEventListener("hashchange", loadFromHash);
