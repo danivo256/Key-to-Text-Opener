@@ -2,72 +2,98 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Text Link Generator</title>
+<title>Text in URL (Formatted)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
-input, textarea, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
-#output, #shortLinkBox { margin-top: 15px; word-break: break-all; border: 1px solid #aaa; padding: 10px; }
+input, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
+#editor {
+  border: 1px solid #aaa;
+  min-height: 120px;
+  padding: 10px;
+  margin-top: 8px;
+}
+#output {
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid #444;
+}
+#linkBox, #shortBox { margin-top: 10px; word-break: break-all; font-size: 14px; }
 </style>
 </head>
+
 <body>
 
-<h2>Enter Key and Text</h2>
-<input id="keyInput" placeholder="Key (e.g. A, 1)">
-<textarea id="textInput" rows="5" placeholder="Text to save"></textarea>
+<h2>Enter Key</h2>
+<input id="keyInput" placeholder="e.g. A, 1, formula">
+
+<h2>Enter Text (supports bold, new lines, formatting)</h2>
+<div id="editor" contenteditable="true"></div>
+
 <button onclick="generateLink()">Generate Link</button>
+<button onclick="copyShort()">Copy Short Link</button>
 
 <div id="linkBox"></div>
-<div id="shortLinkBox"></div>
+<div id="shortBox"></div>
 <div id="output"></div>
 
 <script>
-// Encode text → URL and show text
+let lastShortLink = "";
+
 function generateLink() {
   const key = document.getElementById("keyInput").value.trim();
-  const text = document.getElementById("textInput").value.trim();
-  if (!key || !text) {
-    alert("Enter both key and text.");
+  const html = document.getElementById("editor").innerHTML.trim();
+
+  if (!key || !html) {
+    alert("Enter key and text");
     return;
   }
-  
-  // Encode both in URL hash
-  const fragment = encodeURIComponent(key) + "|" + encodeURIComponent(text);
-  const longUrl = location.origin + location.pathname + "#" + fragment;
-  document.getElementById("linkBox").textContent = "Long Link: " + longUrl;
 
-  // Display immediately
-  showOutput(text);
+  const data = encodeURIComponent(key + "||" + html);
+  const longUrl = location.origin + location.pathname + "#" + data;
 
-  // Now shorten using TinyURL API
-  const apiUrl = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl);
-  fetch(apiUrl)
-    .then(res => res.text())
+  document.getElementById("linkBox").textContent = "Long link: " + longUrl;
+  showOutput(html);
+
+  // tiny.one shortener
+  fetch("https://tiny.one/api-create.php?url=" + encodeURIComponent(longUrl))
+    .then(r => r.text())
     .then(shortUrl => {
-      document.getElementById("shortLinkBox").textContent =
-        "Short Link: " + shortUrl + " ";
+      lastShortLink = shortUrl;
+      document.getElementById("shortBox").textContent = "Short link: " + shortUrl;
     })
-    .catch(err => {
-      document.getElementById("shortLinkBox").textContent =
-        "Shortening failed: " + err;
+    .catch(() => {
+      document.getElementById("shortBox").textContent = "Short link failed.";
     });
 }
 
-// If page opened with #key|text, display it
-function loadFromHash() {
-  if (!location.hash) return;
-  const frag = decodeURIComponent(location.hash.slice(1));
-  const parts = frag.split("|");
-  if (parts.length === 2) {
-    const key = parts[0], text = parts[1];
-    document.getElementById("keyInput").value = key;
-    document.getElementById("textInput").value = text;
-    showOutput(text);
+function copyShort() {
+  if (!lastShortLink) {
+    alert("Generate link first");
+    return;
   }
+  navigator.clipboard.writeText(lastShortLink);
+  alert("Short link copied");
 }
 
-function showOutput(text) {
-  document.getElementById("output").textContent = "Text: " + text;
+function showOutput(html) {
+  document.getElementById("output").innerHTML = html;
+}
+
+function loadFromHash() {
+  if (!location.hash) return;
+
+  const decoded = decodeURIComponent(location.hash.slice(1));
+  const parts = decoded.split("||");
+  if (parts.length !== 2) return;
+
+  const key = parts[0];
+  const html = parts[1];
+
+  document.getElementById("keyInput").value = key;
+  document.getElementById("editor").innerHTML = html;
+  showOutput(html);
 }
 
 window.addEventListener("hashchange", loadFromHash);
