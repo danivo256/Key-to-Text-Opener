@@ -2,85 +2,72 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Key to Text Opener</title>
+<title>Text Link Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 input, textarea, button { width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
-#output { margin-top: 20px; padding: 12px; border: 1px solid #aaa; white-space: pre-wrap; }
-#linkBox { margin-top: 10px; font-size: 14px; word-break: break-all; }
+#output, #shortLinkBox { margin-top: 15px; word-break: break-all; border: 1px solid #aaa; padding: 10px; }
 </style>
 </head>
-
 <body>
 
-<h2>Enter Key</h2>
-<input id="keyInput" placeholder="e.g. A, 1, formula">
-
-<h2>Enter Text</h2>
-<textarea id="textInput" rows="5" placeholder="Write anything..."></textarea>
-
-<button onclick="saveData()">Save</button>
-<button onclick="openKey()">Open Key</button>
-<button onclick="copyLink()">Copy Link</button>
+<h2>Enter Key and Text</h2>
+<input id="keyInput" placeholder="Key (e.g. A, 1)">
+<textarea id="textInput" rows="5" placeholder="Text to save"></textarea>
+<button onclick="generateLink()">Generate Link</button>
 
 <div id="linkBox"></div>
+<div id="shortLinkBox"></div>
 <div id="output"></div>
 
 <script>
-function saveData() {
-  var key = document.getElementById("keyInput").value.trim();
-  var text = document.getElementById("textInput").value;
-
-  if (key === "") {
-    alert("Enter a key");
+// Encode text → URL and show text
+function generateLink() {
+  const key = document.getElementById("keyInput").value.trim();
+  const text = document.getElementById("textInput").value.trim();
+  if (!key || !text) {
+    alert("Enter both key and text.");
     return;
   }
+  
+  // Encode both in URL hash
+  const fragment = encodeURIComponent(key) + "|" + encodeURIComponent(text);
+  const longUrl = location.origin + location.pathname + "#" + fragment;
+  document.getElementById("linkBox").textContent = "Long Link: " + longUrl;
 
-  localStorage.setItem("data_" + key, text);
-  showLink(key);
-  alert("Saved.");
+  // Display immediately
+  showOutput(text);
+
+  // Now shorten using TinyURL API
+  const apiUrl = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl);
+  fetch(apiUrl)
+    .then(res => res.text())
+    .then(shortUrl => {
+      document.getElementById("shortLinkBox").textContent =
+        "Short Link: " + shortUrl + " ";
+    })
+    .catch(err => {
+      document.getElementById("shortLinkBox").textContent =
+        "Shortening failed: " + err;
+    });
 }
 
-function openKey() {
-  var key = document.getElementById("keyInput").value.trim();
-  if (key !== "") {
-    location.hash = key;
-    loadFromHash();
-  }
-}
-
-function showLink(key) {
-  var link = location.origin + location.pathname + "#" + encodeURIComponent(key);
-  document.getElementById("linkBox").textContent = "Link: " + link;
-}
-
-function copyLink() {
-  var key = document.getElementById("keyInput").value.trim();
-  if (key === "") {
-    alert("Enter a key first");
-    return;
-  }
-  var link = location.origin + location.pathname + "#" + encodeURIComponent(key);
-  navigator.clipboard.writeText(link);
-  showLink(key);
-  alert("Link copied to clipboard");
-}
-
+// If page opened with #key|text, display it
 function loadFromHash() {
-  var key = decodeURIComponent(location.hash.replace("#", ""));
-  if (key === "") return;
-
-  var text = localStorage.getItem("data_" + key);
-  document.getElementById("keyInput").value = key;
-  showLink(key);
-
-  if (text !== null) {
-    document.getElementById("output").textContent = "Text for [" + key + "]:\n\n" + text;
-  } else {
-    document.getElementById("output").textContent = "No text saved for [" + key + "]";
+  if (!location.hash) return;
+  const frag = decodeURIComponent(location.hash.slice(1));
+  const parts = frag.split("|");
+  if (parts.length === 2) {
+    const key = parts[0], text = parts[1];
+    document.getElementById("keyInput").value = key;
+    document.getElementById("textInput").value = text;
+    showOutput(text);
   }
+}
+
+function showOutput(text) {
+  document.getElementById("output").textContent = "Text: " + text;
 }
 
 window.addEventListener("hashchange", loadFromHash);
