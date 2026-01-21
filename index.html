@@ -47,12 +47,12 @@ function copyAll() {
   if (longUrl.length > 1800) {
     navigator.clipboard.writeText(longUrl);
     info.textContent = "Text is large. Short link not possible.\nCopied long link:\n" + longUrl;
-    alert("Long link copied (text too large for shortener)");
+    alert("Long link copied (too large for shortener)");
     return;
   }
 
-  // Try TinyURL shortener
-  fetch("https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl))
+  // is.gd shortener (instant redirect, no wait page)
+  fetch("https://is.gd/create.php?format=simple&url=" + encodeURIComponent(longUrl))
     .then(r => r.text())
     .then(t => {
       t = t.trim();
